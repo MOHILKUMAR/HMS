@@ -52,6 +52,8 @@ interface AppContextType {
   availableUsers: User[];
   isDowntimeMode: boolean;
   setDowntimeMode: (enabled: boolean) => void;
+  isMobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
   
   // Quick Live Stats
   beds: Bed[];
@@ -83,6 +85,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [isDowntimeMode, setDowntimeModeState] = useState<boolean>(false);
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+
+  const handleSetActiveModule = (mod: AppModule) => {
+    setActiveModule(mod);
+    setMobileMenuOpen(false); // Close mobile drawer when selecting a module
+  };
 
   // Live state
   const [beds, setBeds] = useState<Bed[]>([]);
@@ -181,7 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLanguage,
         t,
         activeModule,
-        setActiveModule,
+        setActiveModule: handleSetActiveModule,
         isAuthenticated,
         currentUser,
         setCurrentUser,
@@ -190,6 +198,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         availableUsers,
         isDowntimeMode,
         setDowntimeMode,
+        isMobileMenuOpen,
+        setMobileMenuOpen,
         beds,
         queueTokens,
         emergencyCases,

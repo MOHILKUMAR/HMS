@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
+import { MobileBottomBar } from './components/common/MobileBottomBar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { AdminDashboard } from './components/dashboard/AdminDashboard';
 import { PatientPortalView } from './components/patient-portal/PatientPortalView';
@@ -74,7 +75,7 @@ export const App: React.FC = () => {
         <Sidebar />
 
         {/* Dynamic Module Content View */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-20 lg:pb-8">
           {activeModule === 'dashboard' && <AdminDashboard />}
           {activeModule === 'registration' && <RegistrationModule />}
           {activeModule === 'opd' && <OpdModule />}
@@ -92,6 +93,9 @@ export const App: React.FC = () => {
           {activeModule === 'audit' && <AuditModule />}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Visible on phone/tablet) */}
+      <MobileBottomBar />
 
       {/* Branded Printable Modal Overlay */}
       <PrintableDocument />

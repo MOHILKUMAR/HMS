@@ -3,7 +3,7 @@ import { useApp, AppModule } from '../../context/AppContext';
 import { 
   LayoutDashboard, Globe, UserPlus, Stethoscope, BedDouble, 
   AlertOctagon, Activity, Eye, FlaskConical, Pill, Receipt, 
-  Users, WalletCards, FileSpreadsheet, BarChart3, ShieldAlert 
+  Users, WalletCards, FileSpreadsheet, BarChart3, ShieldAlert, X
 } from 'lucide-react';
 
 interface NavItem {
@@ -16,7 +16,10 @@ interface NavItem {
 }
 
 export const Sidebar: React.FC = () => {
-  const { activeModule, setActiveModule, t, queueTokens, emergencyCases, beds, invoices } = useApp();
+  const { 
+    activeModule, setActiveModule, t, queueTokens, 
+    emergencyCases, beds, invoices, isMobileMenuOpen, setMobileMenuOpen 
+  } = useApp();
 
   const activeQueueCount = queueTokens.filter(q => ['waiting', 'called', 'in_consultation'].includes(q.status)).length;
   const activeEmergencies = emergencyCases.filter(e => e.status === 'active').length;
@@ -42,48 +45,95 @@ export const Sidebar: React.FC = () => {
     { id: 'audit', label: t.auditLogs, icon: ShieldAlert }
   ];
 
+  const renderNavList = () => (
+    <div className="py-4 px-3 space-y-1 overflow-y-auto flex-1">
+      <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        Hospital Modules
+      </div>
+
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = activeModule === item.id;
+
+        return (
+          <button
+            key={item.id}
+            onClick={() => {
+              setActiveModule(item.id);
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+              isActive
+                ? 'bg-teal-600 text-white font-semibold shadow-md shadow-teal-700/30'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3 truncate">
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-teal-400'}`} />
+              <span className="truncate">{item.label}</span>
+            </div>
+
+            {item.badge !== undefined && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${item.badgeColor || 'bg-slate-700 text-slate-200'}`}>
+                {item.badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-slate-800 min-h-[calc(100vh-5rem)]">
-      <div className="py-4 px-3 space-y-1 overflow-y-auto max-h-[calc(100vh-9rem)]">
-        <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-          Hospital Modules
+    <>
+      {/* 1. Desktop Docked Sidebar */}
+      <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex-col justify-between border-r border-slate-800 min-h-[calc(100vh-5rem)]">
+        {renderNavList()}
+
+        {/* Hospital Footer Info */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 text-[11px] text-slate-400 shrink-0">
+          <p className="font-semibold text-slate-200">Swastik Hospital</p>
+          <p className="text-[10px] text-slate-500">v1.0 • Single Hospital Monolith</p>
+          <p className="text-[10px] text-teal-400 mt-1">Status: All Modules Connected</p>
         </div>
+      </aside>
 
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeModule === item.id;
+      {/* 2. Mobile Slide-Over Drawer with Dark Backdrop */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            onClick={() => setMobileMenuOpen(false)}
+          />
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveModule(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all group ${
-                isActive
-                  ? 'bg-teal-600 text-white font-semibold shadow-md shadow-teal-700/30'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-3 truncate">
-                <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-teal-400'}`} />
-                <span className="truncate">{item.label}</span>
+          {/* Drawer Panel */}
+          <div className="relative w-72 max-w-[85vw] bg-slate-900 text-slate-300 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200 h-full">
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-white text-sm">Navigation Menu</h3>
+                <p className="text-[10px] text-slate-400">Select any hospital department</p>
               </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              {item.badge !== undefined && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${item.badgeColor || 'bg-slate-700 text-slate-200'}`}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+            {/* Nav list */}
+            {renderNavList()}
 
-      {/* Hospital Footer info */}
-      <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 text-[11px] text-slate-400">
-        <p className="font-semibold text-slate-200">Swastik Hospital</p>
-        <p className="text-[10px] text-slate-500">v1.0 • Single Hospital Monolith</p>
-        <p className="text-[10px] text-teal-400 mt-1">Status: All Modules Connected</p>
-      </div>
-    </aside>
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400">
+              <p className="font-semibold text-slate-200">Swastik Hospital</p>
+              <p className="text-[10px] text-teal-400">DPDP & CERT-In Compliant</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };

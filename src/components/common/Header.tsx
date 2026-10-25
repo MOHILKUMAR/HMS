@@ -2,14 +2,15 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Building2, Languages, WifiOff, Wifi, AlertTriangle, 
-  BedDouble, Users, ShieldCheck, ExternalLink, LogOut, LogIn
+  BedDouble, Users, ShieldCheck, ExternalLink, LogOut, LogIn, Menu, X
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { 
     language, setLanguage, t, currentUser, isAuthenticated, logout,
     isDowntimeMode, setDowntimeMode, 
-    beds, queueTokens, emergencyCases, activeModule, setActiveModule
+    beds, queueTokens, emergencyCases, activeModule, setActiveModule,
+    isMobileMenuOpen, setMobileMenuOpen
   } = useApp();
 
   // Stats calculations
@@ -23,48 +24,61 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all">
       {/* Top emergency / outage notification bar if active */}
       {isDowntimeMode && (
-        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-semibold flex items-center justify-between animate-pulse">
-          <div className="flex items-center gap-2">
+        <div className="bg-amber-500 text-slate-950 px-3 sm:px-4 py-1.5 text-xs font-semibold flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-2 truncate">
             <WifiOff className="w-3.5 h-3.5 shrink-0" />
-            <span>OUTAGE DOWNTIME MODE ACTIVE: Cloud connectivity interrupted. Use manual offline entry. Transactions stored locally for post-restoration audit reconciliation.</span>
+            <span className="truncate">DOWNTIME ACTIVE: Cloud sync paused. Local offline entry active.</span>
           </div>
           <button 
             onClick={() => setDowntimeMode(false)}
-            className="bg-black text-white px-2.5 py-0.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition shadow-sm"
+            className="bg-black text-white px-2 py-0.5 rounded text-[11px] font-bold hover:bg-slate-800 transition shrink-0 ml-2"
           >
-            Restore Live Mode
+            Restore Live
           </button>
         </div>
       )}
 
-      {/* Main Header Container - Increased height & refined composition */}
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+      {/* Main Header Container - Mobile Responsive */}
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
         
-        {/* Left: Hospital Branding & Identity */}
-        <div 
-          className="flex items-center gap-3.5 cursor-pointer group shrink-0" 
-          onClick={() => setActiveModule('dashboard')}
-          title="Return to Main Dashboard"
-        >
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-700/20 group-hover:scale-105 transition-transform">
-            <Building2 className="w-5 h-5 shrink-0" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-black text-xl text-slate-900 tracking-tight leading-none group-hover:text-teal-800 transition-colors">
-                {t.hospitalName}
-              </h1>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider bg-teal-50 text-teal-800 border border-teal-200/80 rounded-md">
-                NABH Ready
-              </span>
+        {/* Left: Mobile Hamburger Toggle + Hospital Branding */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+          {isAuthenticated && (
+            <button
+              onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition"
+              title="Toggle Navigation Menu"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5 text-teal-800" /> : <Menu className="w-5 h-5" />}
+            </button>
+          )}
+
+          <div 
+            className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group" 
+            onClick={() => setActiveModule('dashboard')}
+            title="Return to Main Dashboard"
+          >
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-700/20 group-hover:scale-105 transition-transform">
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             </div>
-            <p className="text-xs text-slate-500 font-medium hidden sm:block mt-1">
-              {t.tagline} • 35-Bed Multi-Specialty Facility
-            </p>
+            <div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="font-black text-base sm:text-xl text-slate-900 tracking-tight leading-none group-hover:text-teal-800 transition-colors">
+                  {t.hospitalName}
+                </h1>
+                <span className="hidden md:inline-flex items-center px-1.5 py-0.5 text-[9px] uppercase font-extrabold tracking-wider bg-teal-50 text-teal-800 border border-teal-200/80 rounded">
+                  NABH Ready
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium hidden sm:block mt-0.5">
+                {t.tagline} • 35-Bed Facility
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Center: Live Clinical Pulse Command Strip */}
+        {/* Center: Live Clinical Pulse Command Strip (Visible on Desktop / Large Tablet) */}
         <div className="hidden xl:flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-inner">
           {/* Bed Occupancy Quick Pill */}
           <div 
@@ -121,19 +135,19 @@ export const Header: React.FC = () => {
             <div className="flex flex-col text-left">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Triage</span>
               <span className="font-extrabold text-xs leading-tight">
-                {activeEmergencies > 0 ? `${activeEmergencies} Red/Yellow` : 'All Clear'}
+                {activeEmergencies > 0 ? `${activeEmergencies} Alert` : 'All Clear'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Right: Controls & Authenticated User Identity */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        {/* Right: Controls & Identity */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           
-          {/* Outage Simulation Toggle */}
+          {/* Outage Simulation Toggle (hidden on small phones) */}
           <button
             onClick={() => setDowntimeMode(!isDowntimeMode)}
-            className={`h-10 px-3 rounded-xl border text-xs font-semibold flex items-center gap-2 transition shadow-sm ${
+            className={`h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl border text-xs font-semibold hidden sm:flex items-center gap-1.5 transition shadow-sm ${
               isDowntimeMode 
                 ? 'bg-amber-100 text-amber-900 border-amber-300' 
                 : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90'
@@ -148,23 +162,23 @@ export const Header: React.FC = () => {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
             )}
-            <span className="hidden md:inline">{isDowntimeMode ? 'Offline Register' : 'Cloud Sync'}</span>
+            <span className="hidden md:inline">{isDowntimeMode ? 'Offline' : 'Cloud Sync'}</span>
           </button>
 
           {/* Language Switcher */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-            className="h-10 px-3 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+            className="h-9 sm:h-10 px-2 sm:px-3 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-sm transition"
             title="Switch Language / भाषा बदलें"
           >
             <Languages className="w-3.5 h-3.5 text-teal-600" />
-            <span>{language === 'en' ? 'हिंदी' : 'English'}</span>
+            <span className="text-[11px] sm:text-xs">{language === 'en' ? 'हिं' : 'EN'}</span>
           </button>
 
           {/* Patient Portal Direct Shortcut */}
           <button
             onClick={() => setActiveModule('patient_portal')}
-            className={`h-10 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm ${
+            className={`h-9 sm:h-10 px-2.5 sm:px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm ${
               activeModule === 'patient_portal'
                 ? 'bg-teal-800 text-white shadow-teal-900/20'
                 : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-emerald-800/15'
@@ -177,17 +191,17 @@ export const Header: React.FC = () => {
 
           {/* Authenticated Staff Badge & Logout */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200">
-              <div className="h-10 flex items-center gap-2.5 px-3.5 rounded-xl bg-slate-900 text-white text-xs shadow-md shadow-slate-900/10">
+            <div className="flex items-center gap-1 sm:gap-1.5 pl-1 border-l border-slate-200">
+              <div className="h-9 sm:h-10 flex items-center gap-2 px-2.5 sm:px-3.5 rounded-xl bg-slate-900 text-white text-xs shadow-md shadow-slate-900/10 max-w-[130px] sm:max-w-none">
                 <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                <div className="text-left hidden md:block">
-                  <p className="font-bold text-xs leading-none tracking-tight">{currentUser.name}</p>
-                  <p className="text-[10px] text-teal-300 font-semibold mt-0.5 capitalize">{currentUser.role.replace('_', ' ')}</p>
+                <div className="text-left truncate">
+                  <p className="font-bold text-xs leading-none tracking-tight truncate">{currentUser.name}</p>
+                  <p className="text-[9px] sm:text-[10px] text-teal-300 font-semibold mt-0.5 capitalize truncate">{currentUser.role.split('_')[0]}</p>
                 </div>
               </div>
               <button
                 onClick={logout}
-                className="h-10 w-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200/90 transition shadow-sm"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200/90 transition shadow-sm shrink-0"
                 title="Sign Out of Console"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -196,10 +210,10 @@ export const Header: React.FC = () => {
           ) : (
             <button
               onClick={() => setActiveModule('dashboard')}
-              className="h-10 flex items-center gap-1.5 px-3.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-md shadow-teal-900/20 transition"
+              className="h-9 sm:h-10 flex items-center gap-1.5 px-3 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-md shadow-teal-900/20 transition"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Staff Login</span>
+              <span>Login</span>
             </button>
           )}
 

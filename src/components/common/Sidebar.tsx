@@ -43,8 +43,8 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-slate-800 min-h-[calc(100vh-4rem)]">
-      <div className="py-4 px-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
+    <aside className="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-slate-800 min-h-[calc(100vh-5rem)]">
+      <div className="py-4 px-3 space-y-1 overflow-y-auto max-h-[calc(100vh-9rem)]">
         <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Hospital Modules
         </div>

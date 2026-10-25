@@ -1,142 +1,173 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Building2, Languages, WifiOff, Wifi, AlertTriangle, 
-  BedDouble, Users, UserCheck, ShieldCheck, ChevronDown, 
-  ExternalLink, Printer, Bell, LogOut, LogIn
+  BedDouble, Users, ShieldCheck, ExternalLink, LogOut, LogIn
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { 
     language, setLanguage, t, currentUser, isAuthenticated, logout,
-    availableUsers, isDowntimeMode, setDowntimeMode, 
-    beds, queueTokens, emergencyCases, activeModule, setActiveModule,
-    showToast
+    isDowntimeMode, setDowntimeMode, 
+    beds, queueTokens, emergencyCases, activeModule, setActiveModule
   } = useApp();
-
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   // Stats calculations
   const totalBeds = beds.length || 35;
   const occupiedBeds = beds.filter(b => b.status === 'occupied').length;
   const activeEmergencies = emergencyCases.filter(e => e.status === 'active').length;
   const activeQueue = queueTokens.filter(q => ['waiting', 'called', 'in_consultation'].includes(q.status)).length;
+  const occupancyPercent = Math.round((occupiedBeds / totalBeds) * 100);
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all">
       {/* Top emergency / outage notification bar if active */}
       {isDowntimeMode && (
-        <div className="bg-amber-500 text-slate-950 px-4 py-1.5 text-xs font-semibold flex items-center justify-between animate-pulse">
+        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-semibold flex items-center justify-between animate-pulse">
           <div className="flex items-center gap-2">
-            <WifiOff className="w-4 h-4" />
+            <WifiOff className="w-3.5 h-3.5 shrink-0" />
             <span>OUTAGE DOWNTIME MODE ACTIVE: Cloud connectivity interrupted. Use manual offline entry. Transactions stored locally for post-restoration audit reconciliation.</span>
           </div>
           <button 
             onClick={() => setDowntimeMode(false)}
-            className="bg-black text-white px-2 py-0.5 rounded text-xs hover:bg-slate-800 transition"
+            className="bg-black text-white px-2.5 py-0.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition shadow-sm"
           >
             Restore Live Mode
           </button>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Hospital Branding */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveModule('dashboard')}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
-            <Building2 className="w-6 h-6" />
+      {/* Main Header Container - Increased height & refined composition */}
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+        
+        {/* Left: Hospital Branding & Identity */}
+        <div 
+          className="flex items-center gap-3.5 cursor-pointer group shrink-0" 
+          onClick={() => setActiveModule('dashboard')}
+          title="Return to Main Dashboard"
+        >
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-700/20 group-hover:scale-105 transition-transform">
+            <Building2 className="w-5 h-5 shrink-0" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-lg text-slate-900 tracking-tight leading-none">
+              <h1 className="font-black text-xl text-slate-900 tracking-tight leading-none group-hover:text-teal-800 transition-colors">
                 {t.hospitalName}
               </h1>
-              <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-teal-50 text-teal-800 border border-teal-200 rounded">
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider bg-teal-50 text-teal-800 border border-teal-200/80 rounded-md">
                 NABH Ready
               </span>
             </div>
-            <p className="text-xs text-slate-500 hidden sm:block mt-0.5">
-              {t.tagline}
+            <p className="text-xs text-slate-500 font-medium hidden sm:block mt-1">
+              {t.tagline} • 35-Bed Multi-Specialty Facility
             </p>
           </div>
         </div>
 
-        {/* Live Counters */}
-        <div className="hidden lg:flex items-center gap-4">
+        {/* Center: Live Clinical Pulse Command Strip */}
+        <div className="hidden xl:flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-inner">
           {/* Bed Occupancy Quick Pill */}
           <div 
             onClick={() => setActiveModule('ipd')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-medium cursor-pointer transition"
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 text-xs font-semibold text-slate-700 shadow-sm cursor-pointer transition hover:border-teal-300"
             title="Click to view IPD Bed Grid"
           >
-            <BedDouble className="w-4 h-4 text-teal-600" />
-            <span>{t.bedOccupancy}:</span>
-            <span className="font-bold text-slate-800">{occupiedBeds}/{totalBeds}</span>
-            <span className="text-[10px] text-teal-700 bg-teal-50 px-1 py-0.5 rounded border border-teal-100 font-semibold">
-              {Math.round((occupiedBeds / totalBeds) * 100)}%
+            <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-700">
+              <BedDouble className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Beds</span>
+              <span className="font-extrabold text-slate-800 text-xs leading-tight">{occupiedBeds}/{totalBeds}</span>
+            </div>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${
+              occupancyPercent > 80 
+                ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}>
+              {occupancyPercent}%
             </span>
           </div>
 
           {/* OPD Queue Today Quick Pill */}
           <div 
             onClick={() => setActiveModule('opd')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-medium cursor-pointer transition"
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 text-xs font-semibold text-slate-700 shadow-sm cursor-pointer transition hover:border-indigo-300"
             title="Click to view OPD Token Queue"
           >
-            <Users className="w-4 h-4 text-indigo-600" />
-            <span>{t.opdToday}:</span>
-            <span className="font-bold text-indigo-900">{activeQueue} active</span>
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-700">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">OPD Queue</span>
+              <span className="font-extrabold text-indigo-950 text-xs leading-tight">{activeQueue} Active</span>
+            </div>
           </div>
 
           {/* Emergency Pill */}
           <div 
             onClick={() => setActiveModule('emergency')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${
+            className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition shadow-sm ${
               activeEmergencies > 0 
-                ? 'bg-rose-50 text-rose-800 border-rose-200 animate-pulse' 
-                : 'bg-slate-50 text-slate-700 border-slate-200'
+                ? 'bg-rose-50 text-rose-900 border-rose-300 animate-pulse' 
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80 hover:border-rose-200'
             }`}
             title="Click to view Emergency Triage"
           >
-            <AlertTriangle className={`w-4 h-4 ${activeEmergencies > 0 ? 'text-rose-600' : 'text-slate-400'}`} />
-            <span>{t.emergencyAlerts}:</span>
-            <span className="font-bold">{activeEmergencies}</span>
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+              activeEmergencies > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              <AlertTriangle className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Triage</span>
+              <span className="font-extrabold text-xs leading-tight">
+                {activeEmergencies > 0 ? `${activeEmergencies} Red/Yellow` : 'All Clear'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Controls: Language, Downtime, Role Switcher */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Outage Toggle */}
+        {/* Right: Controls & Authenticated User Identity */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          
+          {/* Outage Simulation Toggle */}
           <button
             onClick={() => setDowntimeMode(!isDowntimeMode)}
-            className={`p-2 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition ${
+            className={`h-10 px-3 rounded-xl border text-xs font-semibold flex items-center gap-2 transition shadow-sm ${
               isDowntimeMode 
                 ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90'
             }`}
             title={isDowntimeMode ? "Switch to Live Cloud Mode" : "Simulate Cloud/Internet Outage (Downtime Mode)"}
           >
-            {isDowntimeMode ? <WifiOff className="w-4 h-4 text-amber-700" /> : <Wifi className="w-4 h-4 text-emerald-600" />}
-            <span className="hidden xl:inline">{isDowntimeMode ? 'Offline Mode' : 'Online'}</span>
+            {isDowntimeMode ? (
+              <WifiOff className="w-3.5 h-3.5 text-amber-700" />
+            ) : (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            )}
+            <span className="hidden md:inline">{isDowntimeMode ? 'Offline Register' : 'Cloud Sync'}</span>
           </button>
 
           {/* Language Switcher */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
+            className="h-10 px-3 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
             title="Switch Language / भाषा बदलें"
           >
-            <Languages className="w-4 h-4 text-teal-600" />
+            <Languages className="w-3.5 h-3.5 text-teal-600" />
             <span>{language === 'en' ? 'हिंदी' : 'English'}</span>
           </button>
 
           {/* Patient Portal Direct Shortcut */}
           <button
             onClick={() => setActiveModule('patient_portal')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm ${
+            className={`h-10 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm ${
               activeModule === 'patient_portal'
-                ? 'bg-teal-700 text-white'
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                ? 'bg-teal-800 text-white shadow-teal-900/20'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-emerald-800/15'
             }`}
           >
             <ExternalLink className="w-3.5 h-3.5" />
@@ -146,32 +177,34 @@ export const Header: React.FC = () => {
 
           {/* Authenticated Staff Badge & Logout */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs shadow-sm">
+            <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200">
+              <div className="h-10 flex items-center gap-2.5 px-3.5 rounded-xl bg-slate-900 text-white text-xs shadow-md shadow-slate-900/10">
                 <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                <div className="text-left hidden sm:block">
-                  <p className="font-bold leading-none">{currentUser.name}</p>
-                  <p className="text-[10px] text-teal-300 mt-0.5 capitalize">{currentUser.role.replace('_', ' ')}</p>
+                <div className="text-left hidden md:block">
+                  <p className="font-bold text-xs leading-none tracking-tight">{currentUser.name}</p>
+                  <p className="text-[10px] text-teal-300 font-semibold mt-0.5 capitalize">{currentUser.role.replace('_', ' ')}</p>
                 </div>
               </div>
               <button
                 onClick={logout}
-                className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition"
+                className="h-10 w-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200/90 transition shadow-sm"
                 title="Sign Out of Console"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
             <button
               onClick={() => setActiveModule('dashboard')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-sm transition"
+              className="h-10 flex items-center gap-1.5 px-3.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-md shadow-teal-900/20 transition"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Staff Login</span>
             </button>
           )}
+
         </div>
+
       </div>
     </header>
   );

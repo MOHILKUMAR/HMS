@@ -49,6 +49,7 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const apiKeySid = process.env.TWILIO_API_KEY_SID;
   const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
   const contentSid = process.env.TWILIO_CONTENT_SID;
 
@@ -63,7 +64,11 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
 
   if (hasLiveTwilio) {
     try {
-      const client = twilio(accountSid, authToken);
+      // Initialize Twilio client using either API Key or Primary Auth Token
+      const client = apiKeySid && apiKeySid.startsWith('SK')
+        ? twilio(apiKeySid, authToken, { accountSid })
+        : twilio(accountSid, authToken);
+
       const toWhatsApp = formatWhatsAppNumber(mobile);
 
       console.log(`[WhatsApp OTP] Dispatching Twilio message to ${toWhatsApp} from ${fromNumber}...`);

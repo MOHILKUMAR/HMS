@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database.js';
 import { AuthRequest, verifyAuth, recordAuditLog } from '../middleware/auth.js';
+import { sendWhatsAppOtp, verifyWhatsAppOtp } from '../services/whatsapp.service.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'swastik_hospital_super_secret_jwt_key_2026';
@@ -30,22 +31,31 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Patient OTP Request
+// Patient WhatsApp OTP Request
 router.post('/otp/send', async (req, res) => {
   const { mobile } = req.body;
   if (!mobile || mobile.length < 10) {
     return res.status(400).json({ error: 'Valid 10-digit mobile number required' });
   }
 
-  // Simulation: OTP 1234
-  res.json({ success: true, message: 'OTP sent to +91 ' + mobile, testOtp: '1234' });
+  try {
+    const result = await sendWhatsAppOtp(mobile);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to dispatch WhatsApp OTP: ' + err.message });
+  }
 });
 
-// Patient OTP Verify
+// Patient WhatsApp OTP Verify
 router.post('/otp/verify', async (req, res) => {
   const { mobile, otp, patientName } = req.body;
-  if (otp !== '1234' && otp.length !== 4) {
-    return res.status(400).json({ error: 'Invalid OTP code' });
+  if (!mobile || !otp) {
+    return res.status(400).json({ error: 'Mobile number and OTP are required' });
+  }
+
+  const verification = verifyWhatsAppOtp(mobile, otp);
+  if (!verification.valid) {
+    return res.status(400).json({ error: verification.error || 'Invalid OTP code' });
   }
 
   try {

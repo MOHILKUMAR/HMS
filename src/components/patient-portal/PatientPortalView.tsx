@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StorageService } from '../../services/storage';
+import { ApiService } from '../../services/api';
 import { Appointment } from '../../types';
 import { 
   Calendar, Clock, ShieldCheck, User, Phone, CheckCircle2, 
-  AlertCircle, ArrowRight, X, RotateCcw, Building2, Lock, Smartphone
+  AlertCircle, ArrowRight, X, RotateCcw, Building2, Lock, Smartphone, MessageSquare, Loader2
 } from 'lucide-react';
 
 export const PatientPortalView: React.FC = () => {
@@ -12,10 +13,13 @@ export const PatientPortalView: React.FC = () => {
 
   // Authentication State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [mobileNumber, setMobileNumber] = useState('9811223344'); // Default prefill for Sunita Aggarwal
+  const [mobileNumber, setMobileNumber] = useState('8077108275'); // Prefill with user's phone number
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [patientName, setPatientName] = useState('Sunita Aggarwal');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpHint, setOtpHint] = useState<string | null>(null);
+  const [patientName, setPatientName] = useState('Patient');
   const [uhid, setUhid] = useState('SH-2026-00101');
 
   // Booking Form State
@@ -31,23 +35,50 @@ export const PatientPortalView: React.FC = () => {
     '11:30 AM', '12:00 PM', '12:30 PM', '04:00 PM', '04:30 PM'
   ];
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mobileNumber.length < 10) {
       showToast('Please enter a valid 10-digit mobile number', 'error');
       return;
     }
-    setOtpSent(true);
-    showToast('OTP code sent to +91 ' + mobileNumber + ' (Use 1234 for simulation)', 'info');
+    setIsSendingOtp(true);
+    try {
+      const res = await ApiService.sendWhatsAppOtp(mobileNumber);
+      setOtpSent(true);
+      if (res.testOtp) {
+        setOtpHint(res.testOtp);
+      }
+      showToast(res.message || 'OTP dispatched to WhatsApp!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to dispatch OTP', 'error');
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredOtp === '1234' || enteredOtp.length === 4) {
-      setIsLoggedIn(true);
-      showToast('Authentication successful. Welcome to Swastik Patient Portal!', 'success');
-    } else {
-      showToast('Invalid OTP. Please enter 1234 to verify.', 'error');
+    if (!enteredOtp) {
+      showToast('Please enter the verification code', 'error');
+      return;
+    }
+    setIsVerifyingOtp(true);
+    try {
+      const res = await ApiService.verifyWhatsAppOtp(mobileNumber, enteredOtp, patientName);
+      if (res.success) {
+        setIsLoggedIn(true);
+        if (res.patient) {
+          setPatientName(res.patient.name);
+          setUhid(res.patient.uhid);
+        }
+        showToast('Authentication successful. Welcome to Swastik Patient Portal!', 'success');
+      } else {
+        showToast(res.error || 'Invalid OTP. Please check and try again.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'OTP verification failed', 'error');
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -129,7 +160,7 @@ export const PatientPortalView: React.FC = () => {
           {!otpSent ? (
             <form onSubmit={handleSendOtp} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Registered Mobile Number</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Registered WhatsApp Mobile Number</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-bold text-slate-400">+91</span>
                   <input
@@ -137,10 +168,14 @@ export const PatientPortalView: React.FC = () => {
                     required
                     value={mobileNumber}
                     onChange={(e) => setMobileNumber(e.target.value)}
-                    placeholder="9811223344"
-                    className="w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono font-semibold"
+                    placeholder="8077108275"
+                    className="w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono font-semibold"
                   />
                 </div>
+                <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                  Official WhatsApp OTP will be dispatched via Twilio
+                </p>
               </div>
 
               <div>
@@ -150,54 +185,96 @@ export const PatientPortalView: React.FC = () => {
                   required
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="e.g. Sunita Aggarwal"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="e.g. Mohil Kumar"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2"
+                disabled={isSendingOtp}
+                className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2"
               >
-                <span>Send Verification OTP</span>
-                <ArrowRight className="w-4 h-4" />
+                {isSendingOtp ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Connecting to WhatsApp...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send WhatsApp OTP</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-800">
-                OTP sent to <b>+91 {mobileNumber}</b>. For testing simulation, enter <b>1234</b>.
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>WhatsApp Message Dispatched</span>
+                </div>
+                <p>
+                  Check WhatsApp on <b>+91 {mobileNumber}</b> from Swastik Hospital.
+                </p>
+                {otpHint && (
+                  <p className="text-[11px] font-mono text-emerald-800 bg-white/80 p-1.5 rounded border border-emerald-200 mt-1">
+                    Direct Code: <b>{otpHint}</b> (or enter <b>1234</b>)
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Enter 4-Digit OTP</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Enter Verification Code</label>
                 <input
                   type="text"
-                  maxLength={4}
+                  maxLength={6}
                   required
                   autoFocus
                   value={enteredOtp}
                   onChange={(e) => setEnteredOtp(e.target.value)}
-                  placeholder="1234"
-                  className="w-full text-center tracking-widest text-xl font-bold py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="6-digit code"
+                  className="w-full text-center tracking-widest text-xl font-bold py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2"
+                disabled={isVerifyingOtp}
+                className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2"
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Verify & Login</span>
+                {isVerifyingOtp ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Verify & Access Portal</span>
+                  </>
+                )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setOtpSent(false)}
-                className="w-full text-xs text-slate-500 hover:underline"
-              >
-                Change mobile number
-              </button>
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setOtpSent(false); setEnteredOtp(''); }}
+                  className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Change Number</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={isSendingOtp}
+                  className="text-emerald-700 font-semibold hover:underline"
+                >
+                  Resend OTP
+                </button>
+              </div>
             </form>
           )}
         </div>

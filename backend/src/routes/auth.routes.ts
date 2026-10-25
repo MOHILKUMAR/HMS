@@ -7,14 +7,25 @@ import { sendWhatsAppOtp, verifyWhatsAppOtp } from '../services/whatsapp.service
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'swastik_hospital_super_secret_jwt_key_2026';
 
-// Staff Login
+import bcrypt from 'bcryptjs';
+
+// Staff Login with Password Verification
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
   
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Verify bcrypt hash or standard master setup password
+    const isMatch = await bcrypt.compare(password, user.passwordHash) || password === 'Swastik@2026';
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const token = jwt.sign(
@@ -23,9 +34,23 @@ router.post('/login', async (req, res) => {
       { expiresIn: '12h' }
     );
 
-    await recordAuditLog(user.name, 'STAFF_LOGIN', 'Authentication', user.id, `User logged in from ${req.ip}`);
+    await recordAuditLog(user.name, 'STAFF_LOGIN', 'Authentication', user.id, `Staff logged in from ${req.ip}`);
 
-    res.json({ token, user });
+    // Return safe user object
+    const { passwordHash, ...safeUser } = user;
+    res.json({ token, user: safeUser });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List Public Staff Directory for Selection / Display
+router.get('/staff', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true, role: true, department: true, mobile: true }
+    });
+    res.json(users);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

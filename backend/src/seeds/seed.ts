@@ -1,22 +1,25 @@
 import prisma from '../config/database.js';
+import bcrypt from 'bcryptjs';
 
 async function main() {
   console.log('🌱 Seeding Swastik Hospital PostgreSQL Database...');
 
+  const defaultPasswordHash = await bcrypt.hash('Swastik@2026', 10);
+
   // 1. Staff Users
   const users = [
-    { id: 'USR-001', name: 'Dr. Devendra Swastik', email: 'admin@swastikhospital.in', mobile: '9876543210', role: 'admin', department: 'Hospital Administration', mfaEnabled: true },
-    { id: 'DOC-001', name: 'Dr. Vandana Jain', email: 'vandana.jain@swastikhospital.in', mobile: '9876501001', role: 'doctor_gynecologist', department: 'Gynecology & Obstetrics', mfaEnabled: true },
-    { id: 'DOC-002', name: 'Dr. Ankit Jain', email: 'ankit.jain@swastikhospital.in', mobile: '9876501002', role: 'doctor_anesthesiologist', department: 'Anesthesiology & Critical Care', mfaEnabled: true },
-    { id: 'USR-003', name: 'Priya Sharma', email: 'reception@swastikhospital.in', mobile: '9876501003', role: 'reception', department: 'Front Desk & Appointments' },
-    { id: 'USR-004', name: 'Sister Sunita Patel', email: 'nursing@swastikhospital.in', mobile: '9876501004', role: 'nurse', department: 'Inpatient Nursing' },
-    { id: 'USR-005', name: 'Ramesh Verma', email: 'ot@swastikhospital.in', mobile: '9876501005', role: 'ot_coordinator', department: 'Operation Theatre' },
-    { id: 'USR-006', name: 'Dr. M. K. Gupta', email: 'radiology@swastikhospital.in', mobile: '9876501006', role: 'radiologist', department: 'Radiology & Imaging', mfaEnabled: true },
-    { id: 'USR-007', name: 'Rajesh Kumar', email: 'lab@swastikhospital.in', mobile: '9876501007', role: 'lab_technician', department: 'Pathology & Lab' },
-    { id: 'USR-008', name: 'Amit Shah', email: 'pharmacy@swastikhospital.in', mobile: '9876501008', role: 'pharmacist', department: 'Hospital Pharmacy' },
-    { id: 'USR-009', name: 'Neha Mehra', email: 'billing@swastikhospital.in', mobile: '9876501009', role: 'billing_cashier', department: 'Central Billing' },
-    { id: 'USR-010', name: 'Suresh Singhal', email: 'finance@swastikhospital.in', mobile: '9876501010', role: 'finance_manager', department: 'Finance & Accounts', mfaEnabled: true },
-    { id: 'USR-011', name: 'Anita Rao', email: 'support@swastikhospital.in', mobile: '9876501011', role: 'support_manager', department: 'Patient Grievance & Helpdesk' }
+    { id: 'USR-001', name: 'Dr. Devendra Swastik', email: 'admin@swastikhospital.in', mobile: '9876543210', role: 'admin', department: 'Hospital Administration', mfaEnabled: true, passwordHash: defaultPasswordHash },
+    { id: 'DOC-001', name: 'Dr. Vandana Jain', email: 'vandana.jain@swastikhospital.in', mobile: '9876501001', role: 'doctor_gynecologist', department: 'Gynecology & Obstetrics', mfaEnabled: true, passwordHash: defaultPasswordHash },
+    { id: 'DOC-002', name: 'Dr. Ankit Jain', email: 'ankit.jain@swastikhospital.in', mobile: '9876501002', role: 'doctor_anesthesiologist', department: 'Anesthesiology & Critical Care', mfaEnabled: true, passwordHash: defaultPasswordHash },
+    { id: 'USR-003', name: 'Priya Sharma', email: 'reception@swastikhospital.in', mobile: '9876501003', role: 'reception', department: 'Front Desk & Appointments', passwordHash: defaultPasswordHash },
+    { id: 'USR-004', name: 'Sister Sunita Patel', email: 'nursing@swastikhospital.in', mobile: '9876501004', role: 'nurse', department: 'Inpatient Nursing', passwordHash: defaultPasswordHash },
+    { id: 'USR-005', name: 'Ramesh Verma', email: 'ot@swastikhospital.in', mobile: '9876501005', role: 'ot_coordinator', department: 'Operation Theatre', passwordHash: defaultPasswordHash },
+    { id: 'USR-006', name: 'Dr. M. K. Gupta', email: 'radiology@swastikhospital.in', mobile: '9876501006', role: 'radiologist', department: 'Radiology & Imaging', mfaEnabled: true, passwordHash: defaultPasswordHash },
+    { id: 'USR-007', name: 'Rajesh Kumar', email: 'lab@swastikhospital.in', mobile: '9876501007', role: 'lab_technician', department: 'Pathology & Lab', passwordHash: defaultPasswordHash },
+    { id: 'USR-008', name: 'Amit Shah', email: 'pharmacy@swastikhospital.in', mobile: '9876501008', role: 'pharmacist', department: 'Hospital Pharmacy', passwordHash: defaultPasswordHash },
+    { id: 'USR-009', name: 'Neha Mehra', email: 'billing@swastikhospital.in', mobile: '9876501009', role: 'billing_cashier', department: 'Central Billing', passwordHash: defaultPasswordHash },
+    { id: 'USR-010', name: 'Suresh Singhal', email: 'finance@swastikhospital.in', mobile: '9876501010', role: 'finance_manager', department: 'Finance & Accounts', mfaEnabled: true, passwordHash: defaultPasswordHash },
+    { id: 'USR-011', name: 'Anita Rao', email: 'support@swastikhospital.in', mobile: '9876501011', role: 'support_manager', department: 'Patient Grievance & Helpdesk', passwordHash: defaultPasswordHash }
   ];
 
   for (const u of users) {

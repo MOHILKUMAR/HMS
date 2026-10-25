@@ -19,15 +19,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'swastik_hospital_super_secret_jwt_
 export const verifyAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Default fallback to admin for local development/simulation if not provided
-    req.user = {
-      id: 'USR-001',
-      name: 'Dr. Devendra Swastik',
-      email: 'admin@swastikhospital.in',
-      role: 'admin',
-      department: 'Hospital Administration'
-    };
-    return next();
+    return res.status(401).json({ error: 'Unauthorized: Valid authentication token required' });
   }
 
   const token = authHeader.split(' ')[1];

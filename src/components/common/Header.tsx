@@ -3,12 +3,12 @@ import { useApp } from '../../context/AppContext';
 import { 
   Building2, Languages, WifiOff, Wifi, AlertTriangle, 
   BedDouble, Users, UserCheck, ShieldCheck, ChevronDown, 
-  ExternalLink, Printer, Bell
+  ExternalLink, Printer, Bell, LogOut, LogIn
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { 
-    language, setLanguage, t, currentUser, switchUser, 
+    language, setLanguage, t, currentUser, isAuthenticated, logout,
     availableUsers, isDowntimeMode, setDowntimeMode, 
     beds, queueTokens, emergencyCases, activeModule, setActiveModule,
     showToast
@@ -144,51 +144,33 @@ export const Header: React.FC = () => {
             <span className="sm:hidden">Portal</span>
           </button>
 
-          {/* Staff Switcher Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-medium shadow-sm transition"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <div className="text-left hidden sm:block">
-                <p className="font-semibold leading-none">{currentUser.name}</p>
-                <p className="text-[10px] text-slate-300 mt-0.5 capitalize">{currentUser.role.replace('_', ' ')}</p>
+          {/* Authenticated Staff Badge & Logout */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <div className="text-left hidden sm:block">
+                  <p className="font-bold leading-none">{currentUser.name}</p>
+                  <p className="text-[10px] text-teal-300 mt-0.5 capitalize">{currentUser.role.replace('_', ' ')}</p>
+                </div>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {userDropdownOpen && (
-              <div 
-                className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
-                onClick={() => setUserDropdownOpen(false)}
+              <button
+                onClick={logout}
+                className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition"
+                title="Sign Out of Console"
               >
-                <div className="px-3 py-2 border-b border-slate-100 bg-slate-50">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Switch Staff Account</p>
-                  <p className="text-[11px] text-slate-400">11–25 individual accounts baseline</p>
-                </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                  {availableUsers.map(user => (
-                    <button
-                      key={user.id}
-                      onClick={() => switchUser(user)}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-teal-50 transition ${
-                        user.id === currentUser.id ? 'bg-teal-50 font-bold text-teal-900' : 'text-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <p className="font-semibold text-slate-900">{user.name}</p>
-                        <p className="text-[11px] text-slate-500">{user.department}</p>
-                      </div>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-600">
-                        {user.role.split('_')[0]}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setActiveModule('dashboard')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-sm transition"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Staff Login</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

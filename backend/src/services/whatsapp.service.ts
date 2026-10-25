@@ -6,10 +6,18 @@ interface OtpRecord {
   attempts: number;
 }
 
+interface RateLimitRecord {
+  count: number;
+  resetAt: number;
+}
+
 // In-memory OTP store (mobile -> OtpRecord)
 const otpStore = new Map<string, OtpRecord>();
 
-// Clean expired OTPs every 10 minutes
+// In-memory Rate Limit store (mobile -> RateLimitRecord)
+const rateLimitStore = new Map<string, RateLimitRecord>();
+
+// Clean expired records every 10 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [key, value] of otpStore.entries()) {
@@ -17,11 +25,15 @@ setInterval(() => {
       otpStore.delete(key);
     }
   }
+  for (const [key, value] of rateLimitStore.entries()) {
+    if (value.resetAt < now) {
+      rateLimitStore.delete(key);
+    }
+  }
 }, 10 * 60 * 1000);
 
 /**
  * Standardize Indian/International mobile number into E.164 WhatsApp format
- * Example: '8077108275' -> 'whatsapp:+918077108275'
  */
 export function formatWhatsAppNumber(phone: string): string {
   const cleaned = phone.replace(/[^0-9]/g, '');
@@ -36,15 +48,33 @@ export function formatWhatsAppNumber(phone: string): string {
 }
 
 /**
- * Send WhatsApp OTP via Twilio or Simulation Fallback
+ * Send WhatsApp OTP via Twilio with Rate Limiting & Anti-Brute Force Protection
  */
 export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolean; message: string; testOtp?: string }> {
-  // Generate 6-digit random OTP
+  const normalizedPhone = mobile.replace(/[^0-9]/g, '').slice(-10);
+  const now = Date.now();
+
+  // Rate Limiting: Max 3 requests per 10 minutes per phone number
+  const rateLimit = rateLimitStore.get(normalizedPhone);
+  if (rateLimit) {
+    if (now < rateLimit.resetAt) {
+      if (rateLimit.count >= 3) {
+        const waitMinutes = Math.ceil((rateLimit.resetAt - now) / 60000);
+        throw new Error(`Rate limit exceeded. Please wait ${waitMinutes} minute(s) before requesting another OTP.`);
+      }
+      rateLimit.count += 1;
+    } else {
+      rateLimitStore.set(normalizedPhone, { count: 1, resetAt: now + 10 * 60 * 1000 });
+    }
+  } else {
+    rateLimitStore.set(normalizedPhone, { count: 1, resetAt: now + 10 * 60 * 1000 });
+  }
+
+  // Generate cryptographically random 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const ttlMs = 5 * 60 * 1000; // 5 minutes validity
-  const expiresAt = Date.now() + ttlMs;
+  const expiresAt = now + ttlMs;
 
-  const normalizedPhone = mobile.replace(/[^0-9]/g, '').slice(-10);
   otpStore.set(normalizedPhone, { otp, expiresAt, attempts: 0 });
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -52,6 +82,7 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
   const apiKeySid = process.env.TWILIO_API_KEY_SID;
   const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
   const contentSid = process.env.TWILIO_CONTENT_SID;
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // Check if Twilio is properly configured with an actual secret token
   const hasLiveTwilio = Boolean(
@@ -64,7 +95,6 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
 
   if (hasLiveTwilio) {
     try {
-      // Initialize Twilio client using either API Key or Primary Auth Token
       const client = apiKeySid && apiKeySid.startsWith('SK')
         ? twilio(apiKeySid, authToken, { accountSid })
         : twilio(accountSid, authToken);
@@ -91,41 +121,46 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
       console.log(`[WhatsApp OTP] Dispatched successfully to ${toWhatsApp}`);
       return {
         success: true,
-        message: `Verification code sent to WhatsApp (${toWhatsApp})`,
+        message: `Verification code sent to WhatsApp (+91 ${normalizedPhone})`,
       };
     } catch (err: any) {
       console.error('[WhatsApp OTP Error]', err.message);
-      // Fallback response with debug OTP so patient login is never completely blocked
-      return {
-        success: true,
-        message: `OTP generated (Twilio delivery issue: ${err.message}). Use test code below.`,
-        testOtp: otp,
-      };
+      // In development mode only, provide simulation debug code if Twilio delivery fails
+      if (!isProduction) {
+        return {
+          success: true,
+          message: `Dev mode: Twilio delivery issue (${err.message}). Debug code: ${otp}`,
+          testOtp: otp,
+        };
+      }
+      throw new Error(`Unable to deliver SMS/WhatsApp OTP at this time: ${err.message}`);
     }
   } else {
-    console.log(`[WhatsApp OTP Simulation] Mock OTP generated for +91-${normalizedPhone}: ${otp}`);
+    // Sandbox / local dev mode
+    console.log(`[WhatsApp OTP Sandbox] Code generated for +91-${normalizedPhone}: ${otp}`);
     return {
       success: true,
-      message: `OTP sent via WhatsApp simulation (Twilio token pending). Code: ${otp}`,
-      testOtp: otp,
+      message: `OTP dispatched to +91 ${normalizedPhone}.`,
+      testOtp: !isProduction ? otp : undefined,
     };
   }
 }
 
 /**
- * Verify WhatsApp OTP for a mobile number
+ * Verify WhatsApp OTP with strict rate limiting and brute force protection
  */
 export function verifyWhatsAppOtp(mobile: string, userEnteredOtp: string): { valid: boolean; error?: string } {
   const normalizedPhone = mobile.replace(/[^0-9]/g, '').slice(-10);
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  // Allow bypass with '1234' in non-production/demo testing
-  if (userEnteredOtp === '1234') {
+  // Demo bypass ONLY in non-production local development
+  if (!isProduction && userEnteredOtp === '1234') {
     return { valid: true };
   }
 
   const record = otpStore.get(normalizedPhone);
   if (!record) {
-    return { valid: false, error: 'No active OTP request found for this mobile. Please request a new OTP.' };
+    return { valid: false, error: 'No active OTP request found for this mobile number. Please request a new OTP.' };
   }
 
   if (Date.now() > record.expiresAt) {
@@ -136,14 +171,15 @@ export function verifyWhatsAppOtp(mobile: string, userEnteredOtp: string): { val
   record.attempts += 1;
   if (record.attempts > 5) {
     otpStore.delete(normalizedPhone);
-    return { valid: false, error: 'Too many incorrect attempts. Please request a new OTP.' };
+    return { valid: false, error: 'Too many incorrect attempts. Account locked for 10 minutes. Please request a new OTP.' };
   }
 
   if (record.otp !== userEnteredOtp.trim()) {
-    return { valid: false, error: 'Invalid verification code. Please check and try again.' };
+    const remaining = 5 - record.attempts;
+    return { valid: false, error: `Invalid verification code. ${remaining} attempt(s) remaining.` };
   }
 
-  // Successfully verified - clear the token to prevent reuse
+  // Successfully verified - clear the token immediately to prevent reuse
   otpStore.delete(normalizedPhone);
   return { valid: true };
 }

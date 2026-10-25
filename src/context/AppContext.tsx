@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Language, Patient, Bed, OpdQueueToken, EmergencyCase, Admission, Invoice } from '../types';
 import { StorageService, AuditLogEntry } from '../services/storage';
+import { ApiService } from '../services/api';
 import { translations } from './translations';
 
 export type AppModule = 
@@ -27,13 +28,26 @@ export interface PrintableDocData {
   data: any;
 }
 
+const GUEST_USER: User = {
+  id: '',
+  name: 'Unauthenticated User',
+  email: '',
+  mobile: '',
+  role: 'guest' as any,
+  department: 'Public',
+  mfaEnabled: false,
+};
+
 interface AppContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: typeof translations['en'];
   activeModule: AppModule;
   setActiveModule: (module: AppModule) => void;
+  isAuthenticated: boolean;
   currentUser: User;
+  setCurrentUser: (user: User | null) => void;
+  logout: () => void;
   switchUser: (user: User) => void;
   availableUsers: User[];
   isDowntimeMode: boolean;
@@ -64,7 +78,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>('en');
   const [activeModule, setActiveModule] = useState<AppModule>('dashboard');
-  const [currentUser, setCurrentUserState] = useState<User>(StorageService.getCurrentUser());
+  const [currentUserState, setCurrentUserState] = useState<User | null>(() => {
+    return ApiService.getStoredUser() || StorageService.getCurrentUser();
+  });
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [isDowntimeMode, setDowntimeModeState] = useState<boolean>(false);
 
@@ -106,7 +122,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
     const savedLang = localStorage.getItem('swastik_lang_v1') as Language;
     if (savedLang) setLanguageState(savedLang);
-    const user = StorageService.getCurrentUser();
+    const user = ApiService.getStoredUser() || StorageService.getCurrentUser();
     if (user) setCurrentUserState(user);
   }, []);
 
@@ -115,10 +131,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('swastik_lang_v1', lang);
   };
 
-  const switchUser = (user: User) => {
+  const setCurrentUser = (user: User | null) => {
     setCurrentUserState(user);
     StorageService.setCurrentUser(user);
-    showToast(`Switched active user to ${user.name} (${user.department})`, 'info');
+    if (!user) {
+      ApiService.clearSession();
+    }
+  };
+
+  const logout = () => {
+    ApiService.clearSession();
+    setCurrentUserState(null);
+    StorageService.setCurrentUser(null);
+    setActiveModule('dashboard');
+    showToast('Signed out of Swastik HMS console', 'info');
+  };
+
+  const switchUser = (user: User) => {
+    setCurrentUser(user);
+    showToast(`Active account: ${user.name}`, 'info');
   };
 
   const setDowntimeMode = (enabled: boolean) => {
@@ -139,6 +170,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPrintableDoc(null);
   };
 
+  const isAuthenticated = Boolean(currentUserState && currentUserState.id && ApiService.getToken());
+  const currentUser = currentUserState || GUEST_USER;
   const t = translations[language];
 
   return (
@@ -149,7 +182,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         t,
         activeModule,
         setActiveModule,
+        isAuthenticated,
         currentUser,
+        setCurrentUser,
+        logout,
         switchUser,
         availableUsers,
         isDowntimeMode,
@@ -166,7 +202,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openPrintDoc,
         closePrintDoc,
         toast,
-        showToast
+        showToast,
       }}
     >
       {children}
@@ -176,6 +212,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) throw new Error('useApp must be used within an AppProvider');
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
   return context;
 };

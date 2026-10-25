@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
+import { LoginScreen } from './components/auth/LoginScreen';
 import { AdminDashboard } from './components/dashboard/AdminDashboard';
 import { PatientPortalView } from './components/patient-portal/PatientPortalView';
 import { RegistrationModule } from './components/registration/RegistrationModule';
@@ -21,24 +22,50 @@ import { AuditModule } from './components/audit/AuditModule';
 import { PrintableDocument } from './components/print/PrintableDocument';
 
 export const App: React.FC = () => {
-  const { activeModule, toast } = useApp();
+  const { activeModule, isAuthenticated, toast } = useApp();
 
+  const toastElement = toast && (
+    <div className="fixed bottom-5 right-5 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200">
+      <div className={`px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 border ${
+        toast.type === 'success' ? 'bg-emerald-800 text-white border-emerald-700' :
+        toast.type === 'error' ? 'bg-rose-800 text-white border-rose-700' :
+        'bg-slate-900 text-white border-slate-800'
+      }`}>
+        <span>{toast.message}</span>
+      </div>
+    </div>
+  );
+
+  // If viewing patient portal, render patient portal directly with header
+  if (activeModule === 'patient_portal') {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+        {toastElement}
+        <Header />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          <PatientPortalView />
+        </main>
+        <PrintableDocument />
+      </div>
+    );
+  }
+
+  // If not authenticated as staff, enforce Login Screen gate (Resolves C1)
+  if (!isAuthenticated) {
+    return (
+      <>
+        {toastElement}
+        <LoginScreen />
+      </>
+    );
+  }
+
+  // Authenticated Staff Application Layout
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
-      {/* Toast Notification Container */}
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200">
-          <div className={`px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 border ${
-            toast.type === 'success' ? 'bg-emerald-800 text-white border-emerald-700' :
-            toast.type === 'error' ? 'bg-rose-800 text-white border-rose-700' :
-            'bg-slate-900 text-white border-slate-800'
-          }`}>
-            <span>{toast.message}</span>
-          </div>
-        </div>
-      )}
+      {toastElement}
 
-      {/* Main App Header */}
+      {/* Main App Header with Authenticated Profile & Logout */}
       <Header />
 
       {/* Body Layout: Sidebar + Main Workspace */}
@@ -49,7 +76,6 @@ export const App: React.FC = () => {
         {/* Dynamic Module Content View */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           {activeModule === 'dashboard' && <AdminDashboard />}
-          {activeModule === 'patient_portal' && <PatientPortalView />}
           {activeModule === 'registration' && <RegistrationModule />}
           {activeModule === 'opd' && <OpdModule />}
           {activeModule === 'ipd' && <IpdModule />}

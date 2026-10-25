@@ -14,6 +14,7 @@ import {
   SEED_SERVICE_CATALOG, SEED_INVOICES, SEED_EXPENSES,
   SEED_SUPPORT_TICKETS, SEED_DOWNTIME_RECORDS
 } from '../data/seedData';
+import { ApiService } from './api';
 
 export interface AuditLogEntry {
   id: string;
@@ -119,6 +120,11 @@ export class StorageService {
     };
     logs.unshift(entry);
     setItem(STORAGE_KEYS.AUDIT, logs.slice(0, 500)); // keep last 500
+    try {
+      ApiService.recordAudit(action, module, recordId, details);
+    } catch {
+      // offline safe
+    }
   }
 
   static getAuditLogs(): AuditLogEntry[] {
@@ -130,12 +136,16 @@ export class StorageService {
     return getItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
   }
 
-  static getCurrentUser(): User {
-    return getItem<User>(STORAGE_KEYS.CURRENT_USER, SEED_USERS[0]);
+  static getCurrentUser(): User | null {
+    return ApiService.getStoredUser() || getItem<User | null>(STORAGE_KEYS.CURRENT_USER, null);
   }
 
-  static setCurrentUser(user: User): void {
-    setItem(STORAGE_KEYS.CURRENT_USER, user);
+  static setCurrentUser(user: User | null): void {
+    if (user) {
+      setItem(STORAGE_KEYS.CURRENT_USER, user);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    }
   }
 
   // PATIENTS

@@ -7,5 +7,16 @@ export default defineConfig({
   server: {
     port: 3000,
     open: false
+  },
+  build: {
+    sourcemap: false, // Prevents leaking TypeScript source code and developer filesystem paths
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          lucide: ['lucide-react']
+        }
+      }
+    }
   }
 });

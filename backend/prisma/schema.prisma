@@ -1,0 +1,414 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  mobile       String
+  role         String
+  department   String
+  passwordHash String   @default("hashed_swastik_2026")
+  mfaEnabled   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Patient {
+  uhid                String   @id // e.g. SH-2026-00101
+  name                String
+  age                 Int
+  gender              String
+  mobile              String
+  dob                 String?
+  address             String
+  bloodGroup          String?
+  allergies           Json     @default("[]")
+  history             Json     @default("[]")
+  emergencyContact    Json
+  isTemporaryEmergency Boolean @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([mobile])
+  @@index([name])
+}
+
+model Appointment {
+  id            String    @id // APT-2026-XXX
+  uhid          String
+  patientName   String
+  patientMobile String
+  doctorId      String
+  doctorName    String
+  department    String
+  date          String
+  slotTime      String
+  bookingType   String    @default("routine") // routine | special_referral
+  bookingSource String    @default("online_portal")
+  status        String    @default("confirmed")
+  notes         String?
+  confirmedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([doctorId, date, slotTime])
+}
+
+model OpdQueueToken {
+  id                    String    @id // TOK-XXX
+  tokenNumber           Int
+  uhid                  String
+  patientName           String
+  encounterId           String    @unique
+  doctorId              String
+  doctorName            String
+  status                String    @default("waiting") // waiting | called | in_consultation | completed | delayed
+  checkInTime           String
+  calledTime            String?
+  consultationStartTime String?
+  completedTime         String?
+  isEmergencyPriority   Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+
+  @@index([doctorId, status])
+}
+
+model ClinicalConsultation {
+  id                      String    @id // CON-XXX
+  encounterId             String    @unique
+  uhid                    String
+  doctorId                String
+  doctorName              String
+  date                    DateTime  @default(now())
+  chiefComplaints         String
+  historyOfPresentIllness String
+  vitals                  Json
+  allergiesNoted          Json      @default("[]")
+  diagnosis               String
+  clinicalNotes           String
+  prescriptions           Json      @default("[]")
+  investigations          Json      @default("[]")
+  followUpDate            String?
+  gynecologyData          Json?
+  anesthesiaData          Json?
+  finalized               Boolean   @default(true)
+  finalizedAt             DateTime? @default(now())
+  createdAt               DateTime  @default(now())
+
+  @@index([uhid])
+}
+
+model Bed {
+  id                 String   @id // BED-GM-01
+  bedNumber          String   @unique
+  wardId             String
+  wardName           String
+  wardType           String
+  chargePerDay       Int
+  status             String   @default("available") // available | occupied | reserved | cleaning_blocked | maintenance
+  currentAdmissionId String?
+  currentPatientName String?
+  currentUhid        String?
+  updatedAt          DateTime @updatedAt
+}
+
+model Admission {
+  admissionId                String    @id // ADM-2026-XXXXX
+  uhid                       String
+  patientName                String
+  gender                     String
+  age                        Int
+  bedId                      String
+  bedNumber                  String
+  wardName                   String
+  attendingDoctorId          String
+  attendingDoctorName        String
+  admissionDate              DateTime  @default(now())
+  expectedDischargeDate      DateTime?
+  admissionReason            String
+  attendantDetails           Json
+  status                     String    @default("active") // active | transferred | discharged
+  clinicalDischargeAuthorized Boolean   @default(false)
+  clinicalDischargeDoctor    String?
+  clinicalDischargeNotes     String?
+  dischargeDate              DateTime?
+  financialSettled           Boolean   @default(false)
+  bedHistory                 Json      @default("[]")
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@index([uhid])
+}
+
+model InpatientVitalRecord {
+  id              String   @id @default(cuid())
+  admissionId     String
+  uhid            String
+  recordedAt      DateTime @default(now())
+  recordedBy      String
+  bpSystolic      Int
+  bpDiastolic     Int
+  pulse           Int
+  temperature     Float
+  spO2            Int
+  respiratoryRate Int
+  nursingNotes    String
+
+  @@index([admissionId])
+}
+
+model MedicationAdministrationRecord {
+  id               String    @id @default(cuid())
+  admissionId      String
+  uhid             String
+  medicineName     String
+  dosage           String
+  scheduledTime    DateTime
+  administeredTime DateTime?
+  administeredBy   String?
+  status           String    @default("scheduled") // prescribed | scheduled | administered | held | documented
+  notes            String?
+
+  @@index([admissionId])
+}
+
+model EmergencyCase {
+  id                         String   @id @default(cuid())
+  temporaryUhid              String   @unique
+  patientName                String
+  age                        Int
+  gender                     String
+  arrivalTime                DateTime @default(now())
+  triage                     String   // red | yellow | green
+  attendingDoctor            String
+  chiefComplaint             String
+  vitals                     Json
+  treatmentGiven             String
+  disposition                String   @default("observation")
+  reconciledWithPermanentUhid String?
+  status                     String   @default("active") // active | resolved
+}
+
+model OtBooking {
+  id                 String   @id // OTB-2026-XX
+  theatreName        String   @default("Operation Theatre 1 (Main OT)")
+  uhid               String
+  patientName        String
+  procedureName      String
+  date               String
+  startTime          String
+  endTime            String
+  durationMinutes    Int
+  surgeonId          String
+  surgeonName        String
+  anesthesiologistId String?
+  anesthesiologistName String?
+  assistantStaff     Json     @default("[]")
+  requiresAnesthesia Boolean  @default(true)
+  preOpChecked       Boolean  @default(false)
+  status             String   @default("scheduled")
+  notes              String?
+  createdAt          DateTime @default(now())
+
+  @@index([theatreName, date])
+}
+
+model RadiologyWorklistItem {
+  id                String    @id // RAD-2026-XX
+  orderId           String    @unique
+  uhid              String
+  patientName       String
+  encounterId       String?
+  admissionId       String?
+  modality          String
+  bodyPart          String
+  prescribingDoctor String
+  scheduledDate     String
+  status            String    @default("scheduled")
+  reportNotes       String?
+  findings          String?
+  impression        String?
+  reportedBy        String?
+  reportedAt        DateTime?
+  charge            Int
+}
+
+model LabTestItem {
+  id                 String    @id // LAB-2026-XX
+  orderId            String    @unique
+  uhid               String
+  patientName        String
+  testCode           String
+  testName           String
+  category           String
+  processingLocation String    @default("in_house")
+  externalLabPartner String?
+  specimenType       String
+  specimenBarcodeId  String?
+  prescribingDoctor  String
+  orderedAt          DateTime  @default(now())
+  status             String    @default("ordered")
+  parameterResults   Json?
+  overallImpression  String?
+  authorizedSignatory String?
+  authorizedAt       DateTime?
+  fee                Int
+}
+
+model InventoryItem {
+  id           String           @id // MED-XXX
+  name         String
+  genericName  String
+  category     String
+  unit         String
+  totalStock   Int              @default(0)
+  reorderLevel Int              @default(20)
+  batches      InventoryBatch[]
+}
+
+model InventoryBatch {
+  id           String        @id @default(cuid())
+  itemId       String
+  item         InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  batchNumber  String        @unique
+  expiryDate   String
+  currentStock Int
+  mrp          Int
+  purchaseRate Float
+  supplier     String
+}
+
+model ServiceCatalogItem {
+  id         String   @id // SRV-XXX
+  code       String   @unique
+  name       String
+  department String
+  price      Int
+  isActive   Boolean  @default(true)
+  taxPercent Int      @default(0)
+}
+
+model Invoice {
+  id                 String        @id // INV-2026-XXXXX
+  uhid               String
+  patientName        String
+  encounterId        String?
+  admissionId        String?
+  date               String
+  subtotal           Int
+  discountAmount     Int           @default(0)
+  discountReason     String?
+  discountApprovedBy String?
+  taxAmount          Int           @default(0)
+  grandTotal         Int
+  amountPaid         Int           @default(0)
+  balanceDue         Int
+  status             String        @default("unpaid")
+  lines              InvoiceLine[]
+  payments           Payment[]
+  refunds            Refund[]
+  createdAt          DateTime      @default(now())
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  serviceId   String
+  description String
+  category    String
+  unitPrice   Int
+  quantity    Int
+  total       Int
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount         Int
+  method         String   // cash | upi | card | bank_transfer | online_gateway
+  transactionRef String
+  date           String
+  receivedBy     String
+  createdAt      DateTime @default(now())
+}
+
+model Refund {
+  id         String   @id @default(cuid())
+  invoiceId  String
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount     Int
+  reason     String
+  approvedBy String
+  date       String
+  createdAt  DateTime @default(now())
+}
+
+model HospitalExpense {
+  id               String   @id // EXP-2026-XX
+  date             String
+  category         String
+  supplierOrVendor String
+  invoiceNumber    String
+  amount           Int
+  paymentMode      String
+  status           String   @default("pending_approval")
+  approvedBy       String?
+  description      String
+  createdAt        DateTime @default(now())
+}
+
+model SupportTicket {
+  id                   String   @id @default(cuid())
+  ticketNumber         String   @unique // SW-TCK-XXXX
+  uhid                 String?
+  patientName          String?
+  category             String
+  priority             String   @default("medium")
+  assignedToDepartment String
+  subject              String
+  description          String
+  status               String   @default("open")
+  resolutionNotes      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model DowntimeManualRecord {
+  id                     String   @id @default(cuid())
+  tempReferenceId        String   @unique
+  patientName            String
+  phone                  String
+  entryType              String
+  attendingStaff         String
+  serviceRendered        String
+  amountCollected        Int
+  paymentMode            String
+  recordedTimestamp      String
+  reconciled             Boolean  @default(false)
+  reconciledPermanentUhid String?
+  reconciledInvoiceId    String?
+  reconciliationNotes    String?
+  createdAt              DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  operatorName String
+  action       String
+  module       String
+  recordId     String
+  details      String
+
+  @@index([timestamp])
+  @@index([module])
+}

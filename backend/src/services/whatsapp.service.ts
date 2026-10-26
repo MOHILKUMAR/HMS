@@ -104,12 +104,21 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
       console.log(`[WhatsApp OTP] Dispatching Twilio message to ${toWhatsApp} from ${fromNumber}...`);
 
       if (contentSid) {
-        await client.messages.create({
-          from: fromNumber,
-          to: toWhatsApp,
-          contentSid,
-          contentVariables: JSON.stringify({ "1": otp, "2": "5 minutes" }),
-        });
+        try {
+          await client.messages.create({
+            from: fromNumber,
+            to: toWhatsApp,
+            contentSid,
+            contentVariables: JSON.stringify({ "1": otp, "2": "5 minutes" }),
+          });
+        } catch (contentErr: any) {
+          console.warn(`[WhatsApp OTP] Template ${contentSid} failed (${contentErr.message}). Falling back to formatted text body...`);
+          await client.messages.create({
+            from: fromNumber,
+            to: toWhatsApp,
+            body: `🏥 *Swastik Hospital Management System*\n\nYour patient portal verification OTP is: *${otp}*\n\nThis OTP is valid for 5 minutes. Please do not share it with anyone.`,
+          });
+        }
       } else {
         await client.messages.create({
           from: fromNumber,

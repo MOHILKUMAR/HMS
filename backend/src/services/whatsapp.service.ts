@@ -77,6 +77,11 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
 
   otpStore.set(normalizedPhone, { otp, expiresAt, attempts: 0 });
 
+  const metaBearerToken = process.env.WHATSAPP_BEARER_TOKEN;
+  const metaPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const metaTemplateName = process.env.WHATSAPP_TEMPLATE_NAME;
+  const hasMetaCloud = Boolean(metaBearerToken && metaPhoneNumberId && metaBearerToken.length > 20);
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const apiKeySid = process.env.TWILIO_API_KEY_SID;
@@ -84,7 +89,80 @@ export async function sendWhatsAppOtp(mobile: string): Promise<{ success: boolea
   const contentSid = process.env.TWILIO_CONTENT_SID;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Check if Twilio is properly configured with an actual secret token
+  // 1. Prioritize Official Meta WhatsApp Cloud API if configured
+  if (hasMetaCloud) {
+    try {
+      const recipientPhone = `91${normalizedPhone}`;
+      console.log(`[Meta WhatsApp Cloud API] Dispatching OTP to ${recipientPhone} via Phone ID ${metaPhoneNumberId}...`);
+      
+      const url = `https://graph.facebook.com/v20.0/${metaPhoneNumberId}/messages`;
+      
+      let payload: any;
+      if (metaTemplateName) {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: recipientPhone,
+          type: "template",
+          template: {
+            name: metaTemplateName,
+            language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "en_US" },
+            components: [
+              {
+                type: "body",
+                parameters: [{ type: "text", text: otp }]
+              }
+            ]
+          }
+        };
+      } else {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: recipientPhone,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: `🏥 *Swastik Hospital Management System*\n\nYour patient portal verification OTP is: *${otp}*\n\nThis OTP is valid for 5 minutes. Please do not share it with anyone.`
+          }
+        };
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${metaBearerToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json() as any;
+
+      if (!response.ok || data.error) {
+        const errorMsg = data.error ? `${data.error.message} (code: ${data.error.code})` : response.statusText;
+        throw new Error(errorMsg);
+      }
+
+      console.log(`[Meta WhatsApp Cloud API] Dispatched successfully to ${recipientPhone}, message ID:`, data.messages?.[0]?.id);
+      return {
+        success: true,
+        message: `Verification code sent to WhatsApp (+91 ${normalizedPhone})`,
+      };
+    } catch (metaErr: any) {
+      console.error('[Meta WhatsApp Cloud API Error]', metaErr.message);
+      if (!isProduction) {
+        return {
+          success: true,
+          message: `Dev mode: Meta delivery issue (${metaErr.message}). Debug code: ${otp}`,
+          testOtp: otp,
+        };
+      }
+      throw new Error(`Unable to deliver WhatsApp OTP via Meta Cloud API: ${metaErr.message}`);
+    }
+  }
+
+  // 2. Check if Twilio is properly configured
   const hasLiveTwilio = Boolean(
     accountSid &&
     accountSid.startsWith('AC') &&
